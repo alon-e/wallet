@@ -4,7 +4,7 @@ var UI = (function(UI, $, undefined) {
   UI.handleTransfers = function() {
     $stack = $("#transfer-stack");
 
-    $("#transfer-btn").on("click", function(e) {    
+    $("#transfer-btn").on("click", function(e) {
       console.log("UI.handleTransfers: Click");
 
       doubleSpend = {};
@@ -70,14 +70,15 @@ var UI = (function(UI, $, undefined) {
           UI.formError("transfer", error, {"initial": "send_it_now"});
           $stack.removeClass("loading");
           return;
-        } 
+        }
 
         var addresses = [];
 
         $.each(inputs.inputs, function(i, input) {
           addresses.push(input.address);
         });
-
+        //check if any of the inputs keys have been used to sign a trasaction.
+        //TODO - validate the bundles assosiated with spends
         iota.api.findTransactionObjects({"addresses": addresses}, function(error, transactions) {
           if (error) {
             UI.isDoingPOW = false;
@@ -95,22 +96,52 @@ var UI = (function(UI, $, undefined) {
             }
           });
 
-          var transfers = [{"address": address, "value": amount, "message": "", "tag": tag}];
-          var options   = {"inputs": inputs.inputs};
+        if (stop) {
+          console.log("private key re-used for signing!");
+          $("#transfer-btn .progress").hide();
+          $("body").css("cursor", "default");
+
+          UI.isDoingPOW = false;
+
+          modal = $("#key-reuse-modal").remodal({hashTracking: false, closeOnOutsideClick: false, closeOnEscape: false});
+          modal.open();
+          return;
+        }
+
+        //check if the destination address as ever signed a trasaction.
+        //TODO - validate the bundles assosiated with spends
+        iota.api.findTransactionObjects({"addresses": [address]}, function(error, transactions) {
+          if (error) {
+            UI.isDoingPOW = false;
+            UI.formError("transfer", error, {"initial": "send_it_now"});
+            $stack.removeClass("loading");
+            return;
+          }
+
+          var stop = false;
+
+          $.each(transactions, function(i, transaction) {
+            if (transaction.value < 0) {
+              stop = true;
+              return false;
+            }
+          });
 
           if (stop) {
-            console.log("Double spend!");
+            console.log("tring to send to a used address!");
             $("#transfer-btn .progress").hide();
             $("body").css("cursor", "default");
 
             UI.isDoingPOW = false;
-            doubleSpend = {"transfers": transfers, "options": options};
-            
-            modal = $("#double-spend-modal").remodal({hashTracking: false, closeOnOutsideClick: false, closeOnEscape: false});
+
+            modal = $("#sent-to-key-reuse-modal").remodal({hashTracking: false, closeOnOutsideClick: false, closeOnEscape: false});
             modal.open();
             return;
           }
-          
+
+          var transfers = [{"address": address, "value": amount, "message": "", "tag": tag}];
+          var options   = {"inputs": inputs.inputs};
+
           iota.api.sendTransfer(connection.seed, connection.depth, connection.minWeightMagnitude, transfers, options, function(error, transfers) {
             UI.isDoingPOW = false;
             if (error) {
@@ -126,39 +157,32 @@ var UI = (function(UI, $, undefined) {
         });
       });
     });
+});
 
-    $("#double-spend-btn").on("click", function(e) {
-      $("#transfer-btn .progress").show();
-      $("body").css("cursor", "progress");
-
-      UI.isDoingPOW = true;
-
-      iota.api.sendTransfer(connection.seed, connection.depth, connection.minWeightMagnitude, doubleSpend.transfers, doubleSpend.options, function(error, transfers) {
-        UI.isDoingPOW = false;
-        if (error) {
-          console.log(error);
-          UI.formError("transfer", error, {"initial": "send_it_now"});
-        } else {
-          console.log("UI.handleTransfers: Success");
-          UI.formSuccess("transfer", "transfer_completed", {"initial": "send_it_now"});
-          UI.updateState(1000);
-        }
-        $stack.removeClass("loading");
-      });
-
+    $("#key-reuse-ok-btn").on("click", function(e) {
       modal.close();
     });
 
-    $("#double-spend-cancel-btn").on("click", function(e) {
-      modal.close();
-    });
-
-    $(document).on("closed", "#double-spend-modal", function (e) {
+    $(document).on("closed", "#key-reuse-modal", function (e) {
       doubleSpend = {};
 
-      $("#double-spend-btn").loadingReset("yes_send_now");
-      $("#double-spend-cancel-btn").loadingReset("no_cancel");
+      $("#key-reuse-ok-btn").loadingReset("OK");
+      //TODO: check if this needs to be removed
+      if (!UI.isDoingPOW) {
+        $("#transfer-btn").loadingReset("send_it_now");
+        $stack.removeClass("loading");
+      }
+    });
 
+    $("#sent-to-key-reuse-ok-btn").on("click", function(e) {
+      modal.close();
+    });
+
+    $(document).on("closed", "#sent-to-key-reuse-modal", function (e) {
+      doubleSpend = {};
+
+      $("#sent-to-key-reuse-ok-btn").loadingReset("OK");
+      //TODO: check if this needs to be removed
       if (!UI.isDoingPOW) {
         $("#transfer-btn").loadingReset("send_it_now");
         $stack.removeClass("loading");
@@ -167,14 +191,14 @@ var UI = (function(UI, $, undefined) {
 
     $("#transfer-units-value").on("click", function(e) {
       var $overlay = $("#overlay");
-      var $select = $('<div class="dropdown" id="transfer-units-select">' + 
-                        '<ul>' + 
-                          '<li class="iota-i">i</li>' + 
-                          '<li class="iota-ki">Ki</li>' + 
-                          '<li class="iota-mi">Mi</li>' + 
-                          '<li class="iota-gi">Gi</li>' + 
-                          '<li class="iota-ti">Ti</li>' + 
-                        '</ul>' + 
+      var $select = $('<div class="dropdown" id="transfer-units-select">' +
+                        '<ul>' +
+                          '<li class="iota-i">i</li>' +
+                          '<li class="iota-ki">Ki</li>' +
+                          '<li class="iota-mi">Mi</li>' +
+                          '<li class="iota-gi">Gi</li>' +
+                          '<li class="iota-ti">Ti</li>' +
+                        '</ul>' +
                       '</div>');
 
       $overlay.show();
@@ -227,7 +251,7 @@ var UI = (function(UI, $, undefined) {
       $("body").on("click.dropdown", function(e) {
         $ul.removeClass("active");
         $("body").unbind("click.dropdown");
-      }); 
+      });
     });
   }
 
