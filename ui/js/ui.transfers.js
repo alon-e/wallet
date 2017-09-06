@@ -4,7 +4,7 @@ var UI = (function(UI, $, undefined) {
   UI.handleTransfers = function() {
     $stack = $("#transfer-stack");
 
-    $("#transfer-btn").on("click", function(e) {    
+    $("#transfer-btn").on("click", function(e) {
       console.log("UI.handleTransfers: Click");
 
       if ($("#transfer-autofill").val() == "1") {
@@ -105,19 +105,16 @@ var UI = (function(UI, $, undefined) {
       $("#sent-to-key-reuse-close-btn").loadingReset("close");
     });
 
-
-    });
-
     $("#transfer-units-value").on("click", function(e) {
       var $overlay = $("#overlay");
-      var $select = $('<div class="dropdown" id="transfer-units-select">' + 
-                        '<ul>' + 
-                          '<li class="iota-i">i</li>' + 
-                          '<li class="iota-ki">Ki</li>' + 
-                          '<li class="iota-mi">Mi</li>' + 
-                          '<li class="iota-gi">Gi</li>' + 
-                          '<li class="iota-ti">Ti</li>' + 
-                        '</ul>' + 
+      var $select = $('<div class="dropdown" id="transfer-units-select">' +
+                        '<ul>' +
+                          '<li class="iota-i">i</li>' +
+                          '<li class="iota-ki">Ki</li>' +
+                          '<li class="iota-mi">Mi</li>' +
+                          '<li class="iota-gi">Gi</li>' +
+                          '<li class="iota-ti">Ti</li>' +
+                        '</ul>' +
                       '</div>');
 
       $overlay.show();
@@ -170,7 +167,7 @@ var UI = (function(UI, $, undefined) {
       $("body").on("click.dropdown", function(e) {
         $ul.removeClass("active");
         $("body").unbind("click.dropdown");
-      }); 
+      });
     });
   }
 
@@ -261,4 +258,3 @@ function getUnspentInputs(seed, start, threshold, inputs, cb) {
     }).catch(err => cb(err))
   })
 }
-
